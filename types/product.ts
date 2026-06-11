@@ -57,6 +57,26 @@ export interface ProductsResponse {
   };
 }
 
+export interface ProductFilterOption {
+  value: string;
+  count: number;
+}
+
+export interface ProductFiltersResponse {
+  vendors: ProductFilterOption[];
+  productTypes: ProductFilterOption[];
+  availability: {
+    all: number;
+    inStock: number;
+    outOfStock: number;
+  };
+  price: {
+    min: number | null;
+    max: number | null;
+  };
+  currencies: ProductFilterOption[];
+}
+
 export interface ProductsErrorResponse {
   error: {
     code: string;

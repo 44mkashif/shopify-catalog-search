@@ -1,5 +1,7 @@
 import type {
   Product,
+  ProductFilterOption,
+  ProductFiltersResponse,
   ProductSummary,
   ProductsQuery,
   ProductsResponse,
@@ -24,6 +26,56 @@ export function getProductsPage(
       totalItems,
       totalPages,
     },
+  };
+}
+
+export function getProductFilters(products: Product[]): ProductFiltersResponse {
+  const activeProducts = products.filter(
+    (product) => product.status === "ACTIVE",
+  );
+  const vendors = new Map<string, ProductFilterOption>();
+  const productTypes = new Map<string, ProductFilterOption>();
+  const currencies = new Map<string, ProductFilterOption>();
+  let minPrice: number | null = null;
+  let maxPrice: number | null = null;
+  let inStock = 0;
+  for (const product of activeProducts) {
+    incrementOption(vendors, product.vendor);
+    incrementOption(productTypes, product.productType);
+    if (product.currency) {
+      incrementOption(currencies, product.currency);
+    }
+    if (product.available) {
+      inStock += 1;
+    }
+    const productMinPrice = product.minPrice ?? product.maxPrice;
+    const productMaxPrice = product.maxPrice ?? product.minPrice;
+    if (productMinPrice !== null) {
+      minPrice =
+        minPrice === null
+          ? productMinPrice
+          : Math.min(minPrice, productMinPrice);
+    }
+    if (productMaxPrice !== null) {
+      maxPrice =
+        maxPrice === null
+          ? productMaxPrice
+          : Math.max(maxPrice, productMaxPrice);
+    }
+  }
+  return {
+    vendors: sortOptions(vendors),
+    productTypes: sortOptions(productTypes),
+    availability: {
+      all: activeProducts.length,
+      inStock,
+      outOfStock: activeProducts.length - inStock,
+    },
+    price: {
+      min: minPrice,
+      max: maxPrice,
+    },
+    currencies: sortOptions(currencies),
   };
 }
 
@@ -95,6 +147,34 @@ function matchesPriceRange(product: Product, query: ProductsQuery): boolean {
     return false;
   }
   return true;
+}
+
+function incrementOption(
+  options: Map<string, ProductFilterOption>,
+  value: string,
+): void {
+  const trimmedValue = value.trim();
+  if (!trimmedValue) {
+    return;
+  }
+  const key = normalizeForSearch(trimmedValue);
+  const option = options.get(key);
+  if (option) {
+    option.count += 1;
+    return;
+  }
+  options.set(key, {
+    value: trimmedValue,
+    count: 1,
+  });
+}
+
+function sortOptions(
+  options: Map<string, ProductFilterOption>,
+): ProductFilterOption[] {
+  return Array.from(options.values()).sort((left, right) =>
+    left.value.localeCompare(right.value),
+  );
 }
 
 function compareProducts(

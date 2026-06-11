@@ -1,9 +1,9 @@
 import type { NextRequest } from "next/server";
 
+import { jsonError } from "@/lib/api/json-error";
 import { getProducts } from "@/lib/products/csv";
 import { getProductsPage } from "@/lib/products/query";
 import { parseProductsQuery } from "@/lib/products/validation";
-import type { ProductsErrorResponse } from "@/types/product";
 
 export const runtime = "nodejs";
 
@@ -18,18 +18,4 @@ export async function GET(request: NextRequest): Promise<Response> {
   } catch {
     return jsonError("PRODUCTS_LOAD_FAILED", "Unable to load products", 500);
   }
-}
-
-function jsonError(
-  code: string,
-  message: string,
-  status: number,
-): Response {
-  const body: ProductsErrorResponse = {
-    error: {
-      code,
-      message,
-    },
-  };
-  return Response.json(body, { status });
 }
