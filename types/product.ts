@@ -18,3 +18,48 @@ export interface Product {
   variantIds: string[];
   variantCount: number;
 }
+
+export interface ProductSummary {
+  id: string;
+  title: string;
+  handle: string;
+  vendor: string;
+  description: string;
+  productType: string;
+  minPrice: number | null;
+  maxPrice: number | null;
+  currency: string | null;
+  imageUrl: string | null;
+  available: boolean;
+  variantCount: number;
+}
+
+export type ProductAvailability = "all" | "in_stock" | "out_of_stock";
+
+export interface ProductsQuery {
+  q?: string;
+  vendor?: string;
+  productType?: string;
+  availability: ProductAvailability;
+  minPrice?: number;
+  maxPrice?: number;
+  page: number;
+  pageSize: number;
+}
+
+export interface ProductsResponse {
+  data: ProductSummary[];
+  pagination: {
+    page: number;
+    pageSize: number;
+    totalItems: number;
+    totalPages: number;
+  };
+}
+
+export interface ProductsErrorResponse {
+  error: {
+    code: string;
+    message: string;
+  };
+}
