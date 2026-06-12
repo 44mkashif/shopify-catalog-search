@@ -14,7 +14,8 @@ import type {
   ProductsResponse,
 } from "@/types/product";
 
-const pageSize = 6;
+const DEFAULT_PAGE_SIZE = 6;
+const PAGE_SIZE_OPTIONS = [6, 12, 24, 48];
 
 const defaultFilterValues: ProductFilterValues = {
   q: "",
@@ -48,6 +49,7 @@ export function ProductCatalog() {
   const [productsResponse, setProductsResponse] =
     useState<ProductsResponse | null>(null);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [isLoadingFilters, setIsLoadingFilters] = useState(true);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -64,7 +66,7 @@ export function ProductCatalog() {
     appendParam(params, "minPrice", filters.minPrice);
     appendParam(params, "maxPrice", filters.maxPrice);
     return params.toString();
-  }, [filters, page]);
+  }, [filters, page, pageSize]);
 
   useEffect(() => {
     async function loadFilters() {
@@ -124,6 +126,11 @@ export function ProductCatalog() {
     updateFilters({ ...filters, availability });
   }
 
+  function updatePageSize(nextPageSize: number) {
+    setPageSize(nextPageSize);
+    setPage(1);
+  }
+
   const products = productsResponse?.data ?? [];
   const pagination = productsResponse?.pagination;
 
@@ -171,8 +178,10 @@ export function ProductCatalog() {
           <Pagination
             disabled={isLoadingProducts}
             onPageChange={setPage}
+            onPageSizeChange={updatePageSize}
             page={pagination.page}
             pageSize={pagination.pageSize}
+            pageSizeOptions={PAGE_SIZE_OPTIONS}
             totalItems={pagination.totalItems}
             totalPages={pagination.totalPages}
           />
@@ -196,7 +205,7 @@ function getErrorMessage(error: unknown): string {
 function ProductGridSkeleton() {
   return (
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: pageSize }, (_, index) => (
+      {Array.from({ length: DEFAULT_PAGE_SIZE }, (_, index) => (
         <div
           className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm"
           key={index}

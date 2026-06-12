@@ -3,10 +3,12 @@ import type { ReactNode } from "react";
 interface PaginationProps {
   page: number;
   pageSize: number;
+  pageSizeOptions: number[];
   totalItems: number;
   totalPages: number;
   disabled?: boolean;
   onPageChange: (page: number) => void;
+  onPageSizeChange: (pageSize: number) => void;
 }
 
 interface PageButtonProps {
@@ -22,13 +24,22 @@ interface PaginationButtonProps {
   onClick: () => void;
 }
 
+interface PageSizeSelectProps {
+  disabled: boolean;
+  onPageSizeChange: (pageSize: number) => void;
+  pageSize: number;
+  pageSizeOptions: number[];
+}
+
 export function Pagination({
   page,
   pageSize,
+  pageSizeOptions,
   totalItems,
   totalPages,
   disabled = false,
   onPageChange,
+  onPageSizeChange,
 }: PaginationProps) {
   const startItem = (page - 1) * pageSize + 1;
   const endItem = Math.min(page * pageSize, totalItems);
@@ -39,13 +50,21 @@ export function Pagination({
       aria-label="Products pagination"
       className="flex min-w-0 flex-col gap-3 rounded-lg border border-zinc-200 bg-white px-4 py-3 text-sm shadow-sm lg:flex-row lg:items-center lg:justify-between"
     >
-      <p className="shrink-0 text-zinc-500">
-        Showing{" "}
-        <span className="font-medium text-primary">
-          {startItem}-{endItem}
-        </span>{" "}
-        of <span className="font-medium text-primary">{totalItems}</span>
-      </p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <p className="shrink-0 text-zinc-500">
+          Showing{" "}
+          <span className="font-medium text-primary">
+            {startItem}-{endItem}
+          </span>{" "}
+          of <span className="font-medium text-primary">{totalItems}</span>
+        </p>
+        <PageSizeSelect
+          disabled={disabled}
+          onPageSizeChange={onPageSizeChange}
+          pageSize={pageSize}
+          pageSizeOptions={pageSizeOptions}
+        />
+      </div>
 
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <PaginationButton
@@ -83,6 +102,31 @@ export function Pagination({
         </PaginationButton>
       </div>
     </nav>
+  );
+}
+
+function PageSizeSelect({
+  disabled,
+  onPageSizeChange,
+  pageSize,
+  pageSizeOptions,
+}: PageSizeSelectProps) {
+  return (
+    <label className="flex items-center gap-2 text-zinc-500">
+      Per page
+      <select
+        className="h-9 rounded-md border border-zinc-200 bg-white px-2 text-sm text-zinc-950 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={disabled}
+        onChange={(event) => onPageSizeChange(Number(event.target.value))}
+        value={pageSize}
+      >
+        {pageSizeOptions.map((option) => (
+          <option key={option} value={option}>
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
