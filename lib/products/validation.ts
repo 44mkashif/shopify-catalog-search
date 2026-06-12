@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { ProductsQuery } from "@/types/product";
+import type { ProductFiltersQuery, ProductsQuery } from "@/types/product";
 
 const DEFAULT_PAGE = 1;
 const DEFAULT_PAGE_SIZE = 24;
@@ -16,21 +16,14 @@ const positiveInteger = z.coerce.number().int().positive();
 
 const optionalPrice = z.coerce.number().nonnegative().optional();
 
-const productsQuerySchema = z
+const productFiltersQuerySchema = z
   .object({
     q: trimmedOptionalString,
     vendor: trimmedOptionalString,
     productType: trimmedOptionalString,
     availability: z.enum(["all", "in_stock", "out_of_stock"]).default("all"),
-    sort: z
-      .enum(["title_asc", "title_desc", "price_asc", "price_desc"])
-      .default("title_asc"),
     minPrice: optionalPrice,
     maxPrice: optionalPrice,
-    page: positiveInteger.default(DEFAULT_PAGE),
-    pageSize: positiveInteger
-      .default(DEFAULT_PAGE_SIZE)
-      .transform((pageSize) => Math.min(pageSize, MAX_PAGE_SIZE)),
   })
   .refine(
     (query) =>
@@ -43,11 +36,40 @@ const productsQuerySchema = z
     },
   );
 
+const productsQuerySchema = productFiltersQuerySchema.extend({
+    sort: z
+      .enum(["title_asc", "title_desc", "price_asc", "price_desc"])
+      .default("title_asc"),
+    page: positiveInteger.default(DEFAULT_PAGE),
+    pageSize: positiveInteger
+      .default(DEFAULT_PAGE_SIZE)
+      .transform((pageSize) => Math.min(pageSize, MAX_PAGE_SIZE)),
+  });
+
 export function parseProductsQuery(searchParams: URLSearchParams): {
   query: ProductsQuery | null;
   error: string | null;
 } {
   const parsed = productsQuerySchema.safeParse(
+    searchParamsToValidationObject(searchParams),
+  );
+  if (!parsed.success) {
+    return {
+      query: null,
+      error: parsed.error.issues[0]?.message ?? "Invalid query params",
+    };
+  }
+  return {
+    query: parsed.data,
+    error: null,
+  };
+}
+
+export function parseProductFiltersQuery(searchParams: URLSearchParams): {
+  query: ProductFiltersQuery | null;
+  error: string | null;
+} {
+  const parsed = productFiltersQuerySchema.safeParse(
     searchParamsToValidationObject(searchParams),
   );
   if (!parsed.success) {

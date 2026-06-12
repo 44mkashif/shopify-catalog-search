@@ -69,37 +69,47 @@ export function ProductCatalog() {
   const [error, setError] = useState<string | null>(null);
 
   const queryString = useMemo(() => {
-    const params = new URLSearchParams({
-      availability: filters.availability,
-      page: String(page),
-      pageSize: String(pageSize),
+    return buildProductsQueryString(filters, {
+      page,
+      pageSize,
       sort,
     });
-    appendParam(params, "q", filters.q);
-    appendParam(params, "vendor", filters.vendor);
-    appendParam(params, "productType", filters.productType);
-    appendParam(params, "minPrice", filters.minPrice);
-    appendParam(params, "maxPrice", filters.maxPrice);
-    return params.toString();
   }, [filters, page, pageSize, sort]);
 
+  const filtersQueryString = useMemo(() => {
+    return buildProductFiltersQueryString(filters);
+  }, [filters]);
+
   useEffect(() => {
+    const controller = new AbortController();
+
     async function loadFilters() {
       try {
-        const response = await fetch("/api/products/filters");
+        const response = await fetch(`/api/products/filters?${filtersQueryString}`, {
+          signal: controller.signal,
+        });
         if (!response.ok) {
           throw new Error("Unable to load filters");
         }
         const data = (await response.json()) as ProductFiltersResponse;
         setFilterOptions(data);
       } catch (loadError) {
-        setError(getErrorMessage(loadError));
+        if (!controller.signal.aborted) {
+          setError(getErrorMessage(loadError));
+        }
       } finally {
-        setIsLoadingFilters(false);
+        if (!controller.signal.aborted) {
+          setIsLoadingFilters(false);
+        }
       }
     }
+
     loadFilters();
-  }, []);
+
+    return () => {
+      controller.abort();
+    };
+  }, [filtersQueryString]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -221,6 +231,35 @@ function appendParam(params: URLSearchParams, key: string, value: string) {
   if (trimmedValue) {
     params.set(key, trimmedValue);
   }
+}
+
+interface ProductQueryStringOptions {
+  page: number;
+  pageSize: number;
+  sort: ProductSort;
+}
+
+function buildProductsQueryString(
+  filters: ProductFilterValues,
+  options: ProductQueryStringOptions,
+) {
+  const params = new URLSearchParams(buildProductFiltersQueryString(filters));
+  params.set("page", String(options.page));
+  params.set("pageSize", String(options.pageSize));
+  params.set("sort", options.sort);
+  return params.toString();
+}
+
+function buildProductFiltersQueryString(filters: ProductFilterValues) {
+  const params = new URLSearchParams({
+    availability: filters.availability,
+  });
+  appendParam(params, "q", filters.q);
+  appendParam(params, "vendor", filters.vendor);
+  appendParam(params, "productType", filters.productType);
+  appendParam(params, "minPrice", filters.minPrice);
+  appendParam(params, "maxPrice", filters.maxPrice);
+  return params.toString();
 }
 
 function getErrorMessage(error: unknown): string {

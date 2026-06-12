@@ -1,6 +1,7 @@
 import type {
   Product,
   ProductFilterOption,
+  ProductFiltersQuery,
   ProductFiltersResponse,
   ProductSort,
   ProductSummary,
@@ -12,7 +13,9 @@ export function getProductsPage(
   products: Product[],
   query: ProductsQuery,
 ): ProductsResponse {
-  const filteredProducts = applyQuery(products, query);
+  const filteredProducts = filterProducts(products, query).sort((left, right) =>
+    compareProducts(left, right, query.sort),
+  );
   const totalItems = filteredProducts.length;
   const totalPages = Math.ceil(totalItems / query.pageSize);
   const start = (query.page - 1) * query.pageSize;
@@ -30,57 +33,50 @@ export function getProductsPage(
   };
 }
 
-export function getProductFilters(products: Product[]): ProductFiltersResponse {
-  const activeProducts = products.filter(
-    (product) => product.status === "ACTIVE",
-  );
-  const vendors = new Map<string, ProductFilterOption>();
-  const productTypes = new Map<string, ProductFilterOption>();
-  const currencies = new Map<string, ProductFilterOption>();
-  let minPrice: number | null = null;
-  let maxPrice: number | null = null;
-  let inStock = 0;
-  for (const product of activeProducts) {
-    incrementOption(vendors, product.vendor);
-    incrementOption(productTypes, product.productType);
-    if (product.currency) {
-      incrementOption(currencies, product.currency);
-    }
-    if (product.available) {
-      inStock += 1;
-    }
-    const productMinPrice = product.minPrice ?? product.maxPrice;
-    const productMaxPrice = product.maxPrice ?? product.minPrice;
-    if (productMinPrice !== null) {
-      minPrice =
-        minPrice === null
-          ? productMinPrice
-          : Math.min(minPrice, productMinPrice);
-    }
-    if (productMaxPrice !== null) {
-      maxPrice =
-        maxPrice === null
-          ? productMaxPrice
-          : Math.max(maxPrice, productMaxPrice);
-    }
-  }
+export function getProductFilters(
+  products: Product[],
+  query?: ProductFiltersQuery,
+): ProductFiltersResponse {
+  const currentProducts = query
+    ? filterProducts(products, query)
+    : getActiveProducts(products);
+  const vendorProducts = query
+    ? filterProducts(products, { ...query, vendor: undefined })
+    : currentProducts;
+  const productTypeProducts = query
+    ? filterProducts(products, { ...query, productType: undefined })
+    : currentProducts;
+  const availabilityProducts = query
+    ? filterProducts(products, { ...query, availability: "all" })
+    : currentProducts;
+  const priceProducts = query
+    ? filterProducts(products, {
+        ...query,
+        maxPrice: undefined,
+        minPrice: undefined,
+      })
+    : currentProducts;
+
   return {
-    vendors: sortOptions(vendors),
-    productTypes: sortOptions(productTypes),
-    availability: {
-      all: activeProducts.length,
-      inStock,
-      outOfStock: activeProducts.length - inStock,
-    },
-    price: {
-      min: minPrice,
-      max: maxPrice,
-    },
-    currencies: sortOptions(currencies),
+    vendors: getOptions(vendorProducts, (product) => product.vendor),
+    productTypes: getOptions(
+      productTypeProducts,
+      (product) => product.productType,
+    ),
+    availability: getAvailabilityCounts(availabilityProducts),
+    price: getPriceRange(priceProducts),
+    currencies: getOptions(currentProducts, (product) => product.currency),
   };
 }
 
-function applyQuery(products: Product[], query: ProductsQuery): Product[] {
+function getActiveProducts(products: Product[]): Product[] {
+  return products.filter((product) => product.status === "ACTIVE");
+}
+
+function filterProducts(
+  products: Product[],
+  query: ProductFiltersQuery,
+): Product[] {
   const searchQuery = normalizeForSearch(query.q);
   return products
     .filter((product) => product.status === "ACTIVE")
@@ -90,8 +86,7 @@ function applyQuery(products: Product[], query: ProductsQuery): Product[] {
       matchesExactFilter(product.productType, query.productType),
     )
     .filter((product) => matchesAvailability(product, query.availability))
-    .filter((product) => matchesPriceRange(product, query))
-    .sort((left, right) => compareProducts(left, right, query.sort));
+    .filter((product) => matchesPriceRange(product, query));
 }
 
 function matchesSearch(
@@ -120,7 +115,7 @@ function matchesExactFilter(
 
 function matchesAvailability(
   product: Product,
-  availability: ProductsQuery["availability"],
+  availability: ProductFiltersQuery["availability"],
 ): boolean {
   if (availability === "in_stock") {
     return product.available;
@@ -131,7 +126,7 @@ function matchesAvailability(
   return true;
 }
 
-function matchesPriceRange(product: Product, query: ProductsQuery): boolean {
+function matchesPriceRange(product: Product, query: ProductFiltersQuery): boolean {
   if (query.minPrice === undefined && query.maxPrice === undefined) {
     return true;
   }
@@ -152,9 +147,9 @@ function matchesPriceRange(product: Product, query: ProductsQuery): boolean {
 
 function incrementOption(
   options: Map<string, ProductFilterOption>,
-  value: string,
+  value: string | null,
 ): void {
-  const trimmedValue = value.trim();
+  const trimmedValue = value?.trim();
   if (!trimmedValue) {
     return;
   }
@@ -168,6 +163,51 @@ function incrementOption(
     value: trimmedValue,
     count: 1,
   });
+}
+
+function getOptions(
+  products: Product[],
+  getValue: (product: Product) => string | null,
+): ProductFilterOption[] {
+  const options = new Map<string, ProductFilterOption>();
+  for (const product of products) {
+    incrementOption(options, getValue(product));
+  }
+  return sortOptions(options);
+}
+
+function getAvailabilityCounts(products: Product[]) {
+  const inStock = products.filter((product) => product.available).length;
+  return {
+    all: products.length,
+    inStock,
+    outOfStock: products.length - inStock,
+  };
+}
+
+function getPriceRange(products: Product[]): ProductFiltersResponse["price"] {
+  let minPrice: number | null = null;
+  let maxPrice: number | null = null;
+  for (const product of products) {
+    const productMinPrice = product.minPrice ?? product.maxPrice;
+    const productMaxPrice = product.maxPrice ?? product.minPrice;
+    if (productMinPrice !== null) {
+      minPrice =
+        minPrice === null
+          ? productMinPrice
+          : Math.min(minPrice, productMinPrice);
+    }
+    if (productMaxPrice !== null) {
+      maxPrice =
+        maxPrice === null
+          ? productMaxPrice
+          : Math.max(maxPrice, productMaxPrice);
+    }
+  }
+  return {
+    min: minPrice,
+    max: maxPrice,
+  };
 }
 
 function sortOptions(

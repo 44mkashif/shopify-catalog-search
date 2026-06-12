@@ -41,14 +41,17 @@ export type ProductSort =
   | "price_asc"
   | "price_desc";
 
-export interface ProductsQuery {
+export interface ProductFiltersQuery {
   q?: string;
   vendor?: string;
   productType?: string;
   availability: ProductAvailability;
-  sort: ProductSort;
   minPrice?: number;
   maxPrice?: number;
+}
+
+export interface ProductsQuery extends ProductFiltersQuery {
+  sort: ProductSort;
   page: number;
   pageSize: number;
 }
