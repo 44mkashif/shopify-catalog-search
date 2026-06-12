@@ -8,6 +8,8 @@ interface ParsedPriceRange {
   currency: string | null;
 }
 
+const DEFAULT_PRODUCT_TYPE = "Uncategorized";
+
 export function normalizeProduct(row: RawProductRow): Product | null {
   const id = cleanString(row.ID);
   const title = cleanString(row.TITLE);
@@ -16,7 +18,7 @@ export function normalizeProduct(row: RawProductRow): Product | null {
   }
   const handle = cleanString(row.HANDLE);
   const vendor = cleanString(row.VENDOR);
-  const productType = cleanString(row.PRODUCT_TYPE);
+  const productType = cleanString(row.PRODUCT_TYPE) || DEFAULT_PRODUCT_TYPE;
   const status = cleanString(row.STATUS);
   const htmlDescription =
     cleanString(row.DESCRIPTION_HTML) || cleanString(row.BODY_HTML);
