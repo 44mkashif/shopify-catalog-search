@@ -35,12 +35,18 @@ export interface ProductSummary {
 }
 
 export type ProductAvailability = "all" | "in_stock" | "out_of_stock";
+export type ProductSort =
+  | "title_asc"
+  | "title_desc"
+  | "price_asc"
+  | "price_desc";
 
 export interface ProductsQuery {
   q?: string;
   vendor?: string;
   productType?: string;
   availability: ProductAvailability;
+  sort: ProductSort;
   minPrice?: number;
   maxPrice?: number;
   page: number;

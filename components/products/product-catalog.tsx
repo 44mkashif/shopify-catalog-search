@@ -11,11 +11,23 @@ import { ProductGrid } from "@/components/products/product-grid";
 import type {
   ProductAvailability,
   ProductFiltersResponse,
+  ProductSort,
   ProductsResponse,
 } from "@/types/product";
 
 const DEFAULT_PAGE_SIZE = 6;
 const PAGE_SIZE_OPTIONS = [6, 12, 24, 48];
+const DEFAULT_SORT: ProductSort = "title_asc";
+
+const SORT_OPTIONS: Array<{
+  label: string;
+  value: ProductSort;
+}> = [
+  { label: "Title A-Z", value: "title_asc" },
+  { label: "Title Z-A", value: "title_desc" },
+  { label: "Price Low-High", value: "price_asc" },
+  { label: "Price High-Low", value: "price_desc" },
+];
 
 const defaultFilterValues: ProductFilterValues = {
   q: "",
@@ -50,6 +62,7 @@ export function ProductCatalog() {
     useState<ProductsResponse | null>(null);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [sort, setSort] = useState<ProductSort>(DEFAULT_SORT);
   const [isLoadingFilters, setIsLoadingFilters] = useState(true);
   const [isLoadingProducts, setIsLoadingProducts] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +72,7 @@ export function ProductCatalog() {
       availability: filters.availability,
       page: String(page),
       pageSize: String(pageSize),
+      sort,
     });
     appendParam(params, "q", filters.q);
     appendParam(params, "vendor", filters.vendor);
@@ -66,7 +80,7 @@ export function ProductCatalog() {
     appendParam(params, "minPrice", filters.minPrice);
     appendParam(params, "maxPrice", filters.maxPrice);
     return params.toString();
-  }, [filters, page, pageSize]);
+  }, [filters, page, pageSize, sort]);
 
   useEffect(() => {
     async function loadFilters() {
@@ -131,6 +145,11 @@ export function ProductCatalog() {
     setPage(1);
   }
 
+  function updateSort(nextSort: ProductSort) {
+    setSort(nextSort);
+    setPage(1);
+  }
+
   const products = productsResponse?.data ?? [];
   const pagination = productsResponse?.pagination;
 
@@ -149,7 +168,7 @@ export function ProductCatalog() {
       />
 
       <div className="flex min-w-0 flex-col gap-4">
-        <div>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-base font-semibold text-zinc-950">
               Product results
@@ -160,6 +179,21 @@ export function ProductCatalog() {
                 : `${pagination?.totalItems ?? 0} matching products`}
             </p>
           </div>
+          <label className="flex items-center gap-2 text-sm text-zinc-500">
+            Sort
+            <select
+              className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isLoadingProducts}
+              onChange={(event) => updateSort(event.target.value as ProductSort)}
+              value={sort}
+            >
+              {SORT_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
 
         {error ? (

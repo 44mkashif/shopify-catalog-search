@@ -22,6 +22,9 @@ const productsQuerySchema = z
     vendor: trimmedOptionalString,
     productType: trimmedOptionalString,
     availability: z.enum(["all", "in_stock", "out_of_stock"]).default("all"),
+    sort: z
+      .enum(["title_asc", "title_desc", "price_asc", "price_desc"])
+      .default("title_asc"),
     minPrice: optionalPrice,
     maxPrice: optionalPrice,
     page: positiveInteger.default(DEFAULT_PAGE),

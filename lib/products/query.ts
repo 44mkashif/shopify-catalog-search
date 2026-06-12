@@ -2,6 +2,7 @@ import type {
   Product,
   ProductFilterOption,
   ProductFiltersResponse,
+  ProductSort,
   ProductSummary,
   ProductsQuery,
   ProductsResponse,
@@ -90,7 +91,7 @@ function applyQuery(products: Product[], query: ProductsQuery): Product[] {
     )
     .filter((product) => matchesAvailability(product, query.availability))
     .filter((product) => matchesPriceRange(product, query))
-    .sort((left, right) => compareProducts(left, right, searchQuery));
+    .sort((left, right) => compareProducts(left, right, query.sort));
 }
 
 function matchesSearch(
@@ -177,40 +178,40 @@ function sortOptions(
   );
 }
 
-function compareProducts(
-  left: Product,
-  right: Product,
-  searchQuery: string | undefined,
-): number {
-  if (searchQuery) {
-    // Lower ranks are better and a negative sort result keeps left before right
-    const rankDifference =
-      getSearchRank(left, searchQuery) - getSearchRank(right, searchQuery);
-    if (rankDifference !== 0) {
-      return rankDifference;
-    }
+function compareProducts(left: Product, right: Product, sort: ProductSort) {
+  if (sort === "title_desc") {
+    return compareTitles(right, left);
   }
+  if (sort === "price_asc") {
+    return comparePrices(left, right) || compareTitles(left, right);
+  }
+  if (sort === "price_desc") {
+    return comparePrices(right, left) || compareTitles(left, right);
+  }
+  return compareTitles(left, right);
+}
+
+function compareTitles(left: Product, right: Product): number {
   return left.title.localeCompare(right.title);
 }
 
-function getSearchRank(product: Product, searchQuery: string): number {
-  const title = normalizeForSearch(product.title);
-  const vendor = normalizeForSearch(product.vendor);
-  const description = normalizeForSearch(product.description);
-  // Lower ranks are better: title matches beat vendor matches, then descriptions
-  if (title.startsWith(searchQuery)) {
+function comparePrices(left: Product, right: Product): number {
+  const leftPrice = getSortablePrice(left);
+  const rightPrice = getSortablePrice(right);
+  if (leftPrice === null && rightPrice === null) {
+    return 0;
+  }
+  if (leftPrice === null) {
     return 1;
   }
-  if (title.includes(searchQuery)) {
-    return 2;
+  if (rightPrice === null) {
+    return -1;
   }
-  if (vendor.includes(searchQuery)) {
-    return 3;
-  }
-  if (description.includes(searchQuery)) {
-    return 4;
-  }
-  return 5;
+  return leftPrice - rightPrice;
+}
+
+function getSortablePrice(product: Product): number | null {
+  return product.minPrice ?? product.maxPrice;
 }
 
 function normalizeForSearch(value: string | undefined): string {
