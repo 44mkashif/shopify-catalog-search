@@ -1,4 +1,5 @@
-import type { ChangeEvent } from "react";
+import { useMemo, useState } from "react";
+import { X } from "lucide-react";
 
 import type {
   ProductAvailability,
@@ -58,11 +59,8 @@ export function ProductFilters({
     out_of_stock: availability.outOfStock,
   };
 
-  function updateValue(
-    key: keyof ProductFilterValues,
-    event: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) {
-    onChange({ ...values, [key]: event.target.value });
+  function updateValue(key: keyof ProductFilterValues, value: string) {
+    onChange({ ...values, [key]: value });
   }
 
   return (
@@ -72,7 +70,7 @@ export function ProductFilters({
           <h2 className="text-sm font-semibold text-zinc-950">Filters</h2>
         </div>
         <button
-          className="text-xs font-medium text-zinc-500 transition hover:text-primary"
+          className="cursor-pointer text-xs font-medium text-zinc-500 transition hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
           disabled={disabled}
           onClick={onReset}
           type="button"
@@ -86,29 +84,40 @@ export function ProductFilters({
           <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
             Search
           </span>
-          <input
-            className="mt-2 h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-primary focus:ring-4 focus:ring-primary-soft"
-            disabled={disabled}
-            onChange={(event) => updateValue("q", event)}
-            placeholder="Search products"
-            type="search"
-            value={values.q}
-          />
+          <div className="relative mt-2">
+            <input
+              className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 pr-12 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-primary focus:ring-4 focus:ring-primary-soft"
+              disabled={disabled}
+              onChange={(event) => updateValue("q", event.target.value)}
+              placeholder="Search products"
+              type="text"
+              value={values.q}
+            />
+            {values.q ? (
+              <ClearInputButton
+                label="Clear search"
+                disabled={disabled}
+                onClick={() => updateValue("q", "")}
+              />
+            ) : null}
+          </div>
         </label>
 
-        <FilterSelect
+        <AutocompleteFilterInput
+          key={`vendor-${values.vendor}`}
           disabled={disabled}
           label="Vendor"
-          onChange={(event) => updateValue("vendor", event)}
+          onChange={(value) => updateValue("vendor", value)}
           options={vendors}
           placeholder="Any vendor"
           value={values.vendor}
         />
 
-        <FilterSelect
+        <AutocompleteFilterInput
+          key={`product-type-${values.productType}`}
           disabled={disabled}
           label="Product type"
-          onChange={(event) => updateValue("productType", event)}
+          onChange={(value) => updateValue("productType", value)}
           options={productTypes}
           placeholder="Any type"
           value={values.productType}
@@ -155,7 +164,7 @@ export function ProductFilters({
                 className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-primary focus:ring-4 focus:ring-primary-soft"
                 disabled={disabled}
                 inputMode="decimal"
-                onChange={(event) => updateValue("minPrice", event)}
+                onChange={(event) => updateValue("minPrice", event.target.value)}
                 placeholder="Min"
                 type="text"
                 value={values.minPrice}
@@ -167,7 +176,7 @@ export function ProductFilters({
                 className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-primary focus:ring-4 focus:ring-primary-soft"
                 disabled={disabled}
                 inputMode="decimal"
-                onChange={(event) => updateValue("maxPrice", event)}
+                onChange={(event) => updateValue("maxPrice", event.target.value)}
                 placeholder="Max"
                 type="text"
                 value={values.maxPrice}
@@ -183,41 +192,127 @@ export function ProductFilters({
   );
 }
 
-interface FilterSelectProps {
+interface AutocompleteFilterInputProps {
   label: string;
   options: ProductFilterOption[];
   placeholder: string;
   value: string;
   disabled: boolean;
-  onChange: (event: ChangeEvent<HTMLSelectElement>) => void;
+  onChange: (value: string) => void;
 }
 
-function FilterSelect({
+function AutocompleteFilterInput({
   label,
   options,
   placeholder,
   value,
   disabled,
   onChange,
-}: FilterSelectProps) {
+}: AutocompleteFilterInputProps) {
+  const [inputValue, setInputValue] = useState(value);
+  const [isOpen, setIsOpen] = useState(false);
+  const filteredOptions = useMemo(() => {
+    const normalizedSearch = inputValue.trim().toLowerCase();
+    if (!normalizedSearch) {
+      return options;
+    }
+    return options.filter((option) =>
+      option.value.toLowerCase().includes(normalizedSearch),
+    );
+  }, [inputValue, options]);
+
+  function updateInput(nextValue: string) {
+    setInputValue(nextValue);
+    setIsOpen(true);
+  }
+
+  function selectOption(nextValue: string) {
+    onChange(nextValue);
+    setInputValue(nextValue);
+    setIsOpen(false);
+  }
+
+  function clearSelection() {
+    onChange("");
+    setInputValue("");
+    setIsOpen(false);
+  }
+
   return (
-    <label className="block">
-      <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+    <div className="relative">
+      <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500">
         {label}
-      </span>
-      <select
-        className="mt-2 h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-soft"
-        disabled={disabled}
-        onChange={onChange}
-        value={value}
-      >
-        <option value="">{placeholder}</option>
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.value} ({option.count})
-          </option>
-        ))}
-      </select>
-    </label>
+      </label>
+      <div className="relative mt-2">
+        <input
+          className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 pr-12 text-sm text-zinc-950 outline-none transition placeholder:text-zinc-400 focus:border-primary focus:ring-4 focus:ring-primary-soft"
+          disabled={disabled}
+          onBlur={() => setIsOpen(false)}
+          onChange={(event) => updateInput(event.target.value)}
+          onFocus={() => setIsOpen(true)}
+          placeholder={placeholder}
+          type="text"
+          value={inputValue}
+        />
+        {value ? (
+          <ClearInputButton
+            label={`Clear ${label.toLowerCase()}`}
+            disabled={disabled}
+            onClick={(event) => {
+              event.preventDefault();
+              clearSelection();
+            }}
+          />
+        ) : null}
+      </div>
+      {isOpen && !disabled ? (
+        <div className="absolute z-10 mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-zinc-200 bg-white py-1 text-sm shadow-lg">
+          {filteredOptions.length > 0 ? (
+            filteredOptions.map((option) => (
+              <button
+                className="flex w-full cursor-pointer items-center justify-between gap-3 px-3 py-2 text-left text-zinc-700 transition hover:bg-primary-soft hover:text-primary"
+                key={option.value}
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  selectOption(option.value);
+                }}
+                type="button"
+              >
+                <span className="truncate">{option.value}</span>
+                <span className="shrink-0 text-xs text-zinc-400">
+                  {option.count}
+                </span>
+              </button>
+            ))
+          ) : (
+            <div className="px-3 py-2 text-zinc-400">No matches</div>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+interface ClearInputButtonProps {
+  label: string;
+  disabled: boolean;
+  onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+}
+
+function ClearInputButton({
+  label,
+  disabled,
+  onClick,
+}: ClearInputButtonProps) {
+  return (
+    <button
+      aria-label={label}
+      className="absolute right-1.5 top-1/2 flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-zinc-400 transition hover:bg-primary-soft hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+      disabled={disabled}
+      onMouseDown={onClick}
+      type="button"
+    >
+      <X aria-hidden="true" className="h-4 w-4" strokeWidth={2} />
+    </button>
   );
 }

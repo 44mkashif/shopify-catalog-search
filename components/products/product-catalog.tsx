@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 import { Pagination } from "@/components/products/pagination";
 import {
@@ -179,21 +180,11 @@ export function ProductCatalog() {
                 : `${pagination?.totalItems ?? 0} matching products`}
             </p>
           </div>
-          <label className="flex items-center gap-2 text-sm text-zinc-500">
-            Sort
-            <select
-              className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-950 outline-none transition focus:border-primary focus:ring-4 focus:ring-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={isLoadingProducts}
-              onChange={(event) => updateSort(event.target.value as ProductSort)}
-              value={sort}
-            >
-              {SORT_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <SortMenu
+            disabled={isLoadingProducts}
+            onChange={updateSort}
+            value={sort}
+          />
         </div>
 
         {error ? (
@@ -234,6 +225,67 @@ function appendParam(params: URLSearchParams, key: string, value: string) {
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Something went wrong";
+}
+
+interface SortMenuProps {
+  disabled: boolean;
+  onChange: (sort: ProductSort) => void;
+  value: ProductSort;
+}
+
+function SortMenu({ disabled, onChange, value }: SortMenuProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const selectedOption =
+    SORT_OPTIONS.find((option) => option.value === value) ?? SORT_OPTIONS[0];
+
+  function selectSort(nextSort: ProductSort) {
+    onChange(nextSort);
+    setIsOpen(false);
+  }
+
+  return (
+    <div className="relative w-48">
+      <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+        Sort
+      </span>
+      <button
+        className="mt-2 flex h-9 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-zinc-200 bg-white px-3 text-left text-sm text-zinc-950 outline-none transition hover:border-zinc-300 focus:border-primary focus:ring-4 focus:ring-primary-soft disabled:cursor-not-allowed disabled:opacity-50"
+        disabled={disabled}
+        onBlur={() => setIsOpen(false)}
+        onClick={() => setIsOpen((current) => !current)}
+        type="button"
+      >
+        <span className="truncate">{selectedOption.label}</span>
+        <ChevronDown
+          aria-hidden="true"
+          className="h-4 w-4 shrink-0 text-zinc-400"
+          strokeWidth={2}
+        />
+      </button>
+
+      {isOpen && !disabled ? (
+        <div className="absolute right-0 z-10 mt-1 w-full overflow-hidden rounded-md border border-zinc-200 bg-white py-1 text-sm shadow-lg">
+          {SORT_OPTIONS.map((option) => (
+            <button
+              className={`flex w-full cursor-pointer items-center px-3 py-2 text-left transition hover:bg-primary-soft hover:text-primary ${
+                option.value === value
+                  ? "bg-primary-soft font-medium text-primary"
+                  : "text-zinc-700"
+              }`}
+              key={option.value}
+              onMouseDown={(event) => {
+                event.preventDefault();
+                selectSort(option.value);
+              }}
+              type="button"
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function ProductGridSkeleton() {

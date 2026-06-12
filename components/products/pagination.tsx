@@ -140,7 +140,7 @@ function PageButton({
     <button
       aria-current={current ? "page" : undefined}
       aria-label={`Go to page ${page}`}
-      className={`h-9 min-w-9 rounded-md border px-3 text-sm font-medium transition ${
+      className={`h-9 min-w-9 cursor-pointer rounded-md border px-3 text-sm font-medium transition disabled:cursor-not-allowed ${
         current
           ? "border-primary bg-primary text-white"
           : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-300 hover:bg-zinc-50"
@@ -161,7 +161,7 @@ function PaginationButton({
 }: PaginationButtonProps) {
   return (
     <button
-      className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
+      className="h-9 cursor-pointer rounded-md border border-zinc-200 bg-white px-3 text-sm font-medium text-zinc-700 transition hover:border-zinc-300 hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-40"
       disabled={disabled}
       onClick={onClick}
       type="button"
